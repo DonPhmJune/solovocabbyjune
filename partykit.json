@@ -1,0 +1,5 @@
+{
+  "name": "solo-quiz",
+  "main": "party/room.ts",
+  "compatibilityDate": "2024-11-01"
+}
