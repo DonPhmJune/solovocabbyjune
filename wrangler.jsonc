@@ -1,0 +1,19 @@
+{
+  "name": "solo-quiz-server",
+  "main": "party/room.ts",
+  "compatibility_date": "2024-11-01",
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "RoomServer", // <-- Vẫn giữ nguyên viết hoa
+        "class_name": "RoomServer"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["RoomServer"]
+    }
+  ]
+}

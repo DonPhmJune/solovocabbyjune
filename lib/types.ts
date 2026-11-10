@@ -23,3 +23,9 @@ export type RoomConfig = {
 export type LobbyPlayer = { id: string; name: string };
 
 export type LeaderboardEntry = { id: string; name: string; score: number };
+export type ChatMessage = {
+  id: string;
+  sender: string;
+  text: string;
+  time: number;
+};

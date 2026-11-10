@@ -7,6 +7,7 @@ import { Lobby } from '@/components/Lobby';
 import { QuestionView } from '@/components/QuestionView';
 import { ResultView } from '@/components/ResultView';
 import { Leaderboard } from '@/components/Leaderboard';
+import { ChatBox } from '@/components/ChatBox'; // Import ChatBox
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -28,7 +29,8 @@ export default function SoloPage() {
     if (raw) setHostQuiz(JSON.parse(raw));
   }, [code, isHostParam]);
 
-  const { state, start, answer, nextQuestion } = useRoom(joined ? code : '', name);
+  // Lấy thêm hàm sendChat từ hook
+  const { state, start, answer, nextQuestion, sendChat } = useRoom(joined ? code : '', name);
 
   if (!joined) {
     return (
@@ -38,13 +40,30 @@ export default function SoloPage() {
             <div className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-emerald-500 text-white shadow-lg shadow-blue-500/30">
               <Sparkles className="h-6 w-6" />
             </div>
-            <h1 className="text-xl font-bold">Vào phòng Solo Quiz</h1>
-            <p className="mt-1 text-sm text-slate-500">Mã phòng: <span className="font-mono font-bold text-blue-700 dark:text-blue-400">{code}</span></p>
+            <h1 className="text-xl font-bold text-slate-900 dark:text-white">Vào phòng Solo Quiz</h1>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Mã phòng: <span className="font-mono font-bold text-blue-700 dark:text-blue-400">{code}</span>
+            </p>
           </div>
-          <form onSubmit={(e) => { e.preventDefault(); if (nameInput.trim()) { setName(nameInput.trim()); setJoined(true); } }} className="space-y-3">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (nameInput.trim()) {
+                setName(nameInput.trim());
+                setJoined(true);
+              }
+            }}
+            className="space-y-3"
+          >
             <div className="relative">
               <User className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <Input className="pl-10" placeholder="Tên của bạn" value={nameInput} onChange={(e) => setNameInput(e.target.value)} autoFocus />
+              <Input
+                className="pl-10"
+                placeholder="Tên của bạn"
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                autoFocus
+              />
             </div>
             <Button size="lg" className="w-full">Vào phòng</Button>
           </form>
@@ -54,27 +73,40 @@ export default function SoloPage() {
   }
 
   if (state.phase === 'connecting') {
-    return <div className="flex min-h-screen items-center justify-center text-slate-500">Đang kết nối...</div>;
+    return (
+      <div className="flex min-h-screen items-center justify-center text-slate-500">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
+          <div className="text-sm">Đang kết nối...</div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-6">
+    <main className="mx-auto max-w-6xl px-4 py-6">
       <header className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-emerald-500 text-white shadow-sm">
             <Sparkles className="h-4 w-4" />
           </div>
-          <span className="font-bold">Solo Quiz</span>
+          <span className="font-bold text-slate-900 dark:text-white">Solo Quiz</span>
         </div>
         <span className="rounded-full bg-white dark:bg-slate-800 px-3 py-1 text-xs font-mono font-bold text-slate-600 dark:text-slate-300 shadow-sm">
           {code}
         </span>
       </header>
 
-      <div className="grid gap-6 md:grid-cols-[1fr_280px]">
+      <div className="grid gap-6 md:grid-cols-[1fr_300px]">
+        {/* CỘT TRÁI: NỘI DUNG CHÍNH */}
         <div>
           {state.phase === 'lobby' && (
-            <Lobby state={state} code={code} canStart={!!hostQuiz && state.isHost} onStart={() => { if (hostQuiz) start(hostQuiz.questions); }} />
+            <Lobby 
+              state={state} 
+              code={code} 
+              canStart={!!hostQuiz && state.isHost} 
+              onStart={() => { if (hostQuiz) start(hostQuiz.questions); }} 
+            />
           )}
           {state.phase === 'playing' && (
             <QuestionView state={state} onAnswer={answer} onNext={nextQuestion} />
@@ -84,26 +116,22 @@ export default function SoloPage() {
           )}
         </div>
 
-        {/* Hiển thị Leaderboard trực tiếp bên cạnh */}
-        {state.phase !== 'lobby' && (
-          <aside className="animate-fade-up">
-            <div className="sticky top-6">
-              <div className="rounded-2xl border border-slate-200/70 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 p-4 shadow-sm backdrop-blur">
-                <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
-                  <Trophy className="h-3.5 w-3.5" /> Bảng điểm
-                </h3>
-                <ol className="space-y-2">
-                  {state.leaderboard.map((p, i) => (
-                    <li key={p.id} className={`flex justify-between text-sm ${p.id === state.me?.id ? 'font-bold text-blue-600 dark:text-blue-400' : ''}`}>
-                      <span>{i + 1}. {p.name}</span>
-                      <span>{p.score} đ</span>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            </div>
-          </aside>
-        )}
+        {/* CỘT PHẢI: BẢNG ĐIỂM & CHAT */}
+        <aside className="animate-fade-up">
+          <div className="sticky top-6 space-y-4">
+            {/* Chỉ hiện Bảng điểm khi đang chơi hoặc đã kết thúc */}
+            {state.phase !== 'lobby' && state.leaderboard.length > 0 && (
+              <Leaderboard board={state.leaderboard} myId={state.me?.id} />
+            )}
+            
+            {/* Khung chat LUÔN hiển thị (Lúc chờ cũng có) */}
+            <ChatBox 
+              messages={state.messages} 
+              onSend={sendChat} 
+              myName={state.me?.name} 
+            />
+          </div>
+        </aside>
       </div>
     </main>
   );

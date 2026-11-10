@@ -1,8 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Check, X, Lightbulb, ArrowRight } from 'lucide-react';
+import { Check, X, Lightbulb } from 'lucide-react';
 import type { ClientState } from '@/hooks/useRoom';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
 
 export function QuestionView({
@@ -15,17 +14,29 @@ export function QuestionView({
   const q = state.questions[state.currentIdx];
   const [fillValue, setFillValue] = useState('');
   
-  useEffect(() => { setFillValue(''); }, [q.id]);
+  useEffect(() => { 
+    setFillValue(''); 
+  }, [q?.id]);
 
   const answered = !!state.lastAnswer;
   const isLast = state.currentIdx === state.questions.length - 1;
+
+  // TỰ ĐỘNG CHUYỂN CÂU SAU 1.5 GIÂY
+  useEffect(() => {
+    if (answered && !isLast) {
+      const timer = setTimeout(() => {
+        onNext();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [answered, isLast, onNext]);
 
   const submit = (val: string) => {
     if (answered || !val.trim()) return;
     onAnswer(q.id, val, isLast);
   };
 
-  if (!q) return <div>Đang tải câu hỏi...</div>;
+  if (!q) return <div className="text-center p-10 text-slate-500">Đang tải câu hỏi...</div>;
 
   return (
     <div className="space-y-4">
@@ -53,11 +64,10 @@ export function QuestionView({
       {q.type === 'mcq' ? (
         <div className="grid gap-2.5 sm:grid-cols-2">
           {q.options?.map((opt, i) => {
-            const isMine = answered && state.lastAnswer?.actualAnswer !== opt && opt === state.lastAnswer?.actualAnswer; // Logic hiển thị
-            const isCorrect = answered && opt === state.lastAnswer?.actualAnswer;
-            // Lưu ý: Trong Async, Client không biết họ đã chọn gì (vì server k trả về câu họ chọn). 
-            // Mình sẽ sửa server trả về thêm 'yourAnswer'.
-            // Để tạm logic đơn giản:
+            const isCorrectAnswer = answered && opt === state.lastAnswer?.actualAnswer;
+            const isWrongPick = answered && opt === state.lastAnswer?.yourAnswer && opt !== state.lastAnswer?.actualAnswer;
+            const isOther = answered && !isCorrectAnswer && !isWrongPick;
+
             return (
               <button
                 key={opt}
@@ -66,16 +76,21 @@ export function QuestionView({
                 className={cn(
                   'group relative rounded-xl border-2 px-5 py-4 text-left font-medium transition-all duration-200 disabled:cursor-not-allowed',
                   !answered && 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:-translate-y-0.5 hover:border-blue-400 hover:shadow-md',
-                  isCorrect && 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30',
-                  answered && !isCorrect && 'border-slate-200 dark:border-slate-700 opacity-50'
+                  isCorrectAnswer && 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30',
+                  isWrongPick && 'border-rose-500 bg-rose-50 dark:bg-rose-950/30',
+                  isOther && 'border-slate-200 dark:border-slate-700 opacity-40'
                 )}
               >
                 <div className="flex items-center gap-3">
                   <span className={cn(
-                    'flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold',
-                    isCorrect ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                    'flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold transition-colors',
+                    isCorrectAnswer ? 'bg-emerald-500 text-white' : 
+                    isWrongPick ? 'bg-rose-500 text-white' : 
+                    'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
                   )}>
-                    {isCorrect ? <Check className="h-4 w-4" /> : String.fromCharCode(65 + i)}
+                    {isCorrectAnswer ? <Check className="h-4 w-4" /> : 
+                     isWrongPick ? <X className="h-4 w-4" /> : 
+                     String.fromCharCode(65 + i)}
                   </span>
                   <span className="text-slate-900 dark:text-slate-100">{opt}</span>
                 </div>
@@ -99,15 +114,25 @@ export function QuestionView({
         </form>
       )}
 
-      {/* Kết quả Feedback & Nút Next */}
+      {/* Kết quả Feedback & Tự động chuyển câu */}
       {answered && (
         <div className="animate-fade-up rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 text-center shadow-sm">
-          <div className={cn('text-lg font-bold mb-3', state.lastAnswer?.correct ? 'text-emerald-600' : 'text-rose-600')}>
-            {state.lastAnswer?.correct ? 'Chính xác! +100 điểm' : `Sai rồi. Đáp án đúng là: ${state.lastAnswer?.actualAnswer}`}
+          <div className={cn('text-lg font-bold mb-2', state.lastAnswer?.correct ? 'text-emerald-600' : 'text-rose-600')}>
+            {state.lastAnswer?.correct 
+              ? 'Chính xác! +100 điểm' 
+              : `Sai rồi. Đáp án đúng là: ${state.lastAnswer?.actualAnswer}`}
           </div>
-          <Button onClick={onNext} className="w-full sm:w-auto">
-            {isLast ? 'Xem kết quả' : 'Câu tiếp theo'} <ArrowRight className="h-4 w-4" />
-          </Button>
+          
+          {!isLast ? (
+            <div className="text-sm text-slate-500 dark:text-slate-400 animate-pulse flex items-center justify-center gap-2">
+              <span className="inline-block h-2 w-2 rounded-full bg-blue-500 animate-ping"></span>
+              Đang chuyển câu tiếp theo...
+            </div>
+          ) : (
+            <div className="text-sm text-blue-500 dark:text-blue-400 font-semibold animate-pulse">
+              Đang chờ tổng kết...
+            </div>
+          )}
         </div>
       )}
     </div>
