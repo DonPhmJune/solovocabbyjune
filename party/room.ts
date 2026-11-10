@@ -129,10 +129,13 @@ export class RoomServer extends Server {
   }
 }
 
+// party/room.ts
+
 export default {
   async fetch(request: Request, env: any): Promise<Response> {
+    // Thêm tùy chọn cors: true vào đây
     return (
-      (await routePartykitRequest(request, env)) ||
+      (await routePartykitRequest(request, env, { cors: true })) ||
       new Response("Not Found", { status: 404 })
     );
   },
